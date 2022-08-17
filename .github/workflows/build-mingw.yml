@@ -1,0 +1,64 @@
+name: cpp-cmake-mingw-prebuilt-release-actions-workflow
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+  
+jobs:
+  build:
+    name: Create Release
+    runs-on: windows-2019
+    env:
+      libraryName: quantlib
+      cmakeInstallationPath: quantlib-installation
+      tagName: QuantLib-v1.27
+      mingwTargetZip: quantlib-${{ github.ref_name }}-x86_64-posix-seh-rev0-8.1.0.zip
+    steps:
+      - name: check mingw version
+        run: gcc --version
+        
+      - name: git clone
+        shell: cmd
+        run: git clone https://github.com/lballabio/QuantLib.git && cd QuantLib && git checkout ${{ env.tagName }}
+
+      - name: Install boost
+        uses: MarkusJx/install-boost@v2.3.0
+        id: install-boost
+        with:
+          # REQUIRED: Specify the required boost version
+          # A list of supported versions can be found here: 
+          # https://github.com/MarkusJx/prebuilt-boost/blob/main/versions-manifest.json
+          boost_version: 1.78.0
+          # OPTIONAL: Specify a custon install location
+          boost_install_dir: ${{github.workspace}}
+          # OPTIONAL: Specify a platform version
+          platform_version: 2019
+          # OPTIONAL: Specify a toolset
+          toolset: mingw
+          link: static
+          arch: x86
+          # NOTE: If a boost version matching all requirements cannot be found,
+          # this build step will fail
+          
+      - name: cmake
+        shell: cmd
+        run: cd QuantLib && cmake.exe -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DQL_BUILD_BENCHMARK=OFF -DQL_BUILD_EXAMPLES=OFF -DQL_BUILD_TEST_SUITE=OFF -DQL_INSTALL_BENCHMARK=OFF -DQL_INSTALL_EXAMPLES=OFF -DQL_INSTALL_TEST_SUITE=OFF -DBOOST_ROOT="${{github.workspace}}/boost/boost/lib/cmake/Boost-1.78.0" -DCMAKE_INSTALL_PREFIX="build/${{ env.cmakeInstallationPath }}" -B./build
+        
+      - name: cmake build and install
+        shell: cmd
+        run: cd QuantLib\build && cmake --build . && cmake --install .
+        
+      - name: Archive Release
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          directory: "QuantLib/build/${{ env.cmakeInstallationPath }}"
+          filename: "${{ env.mingwTargetZip }}"
+          
+      - name: Release prebuilt
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "QuantLib/build/${{ env.cmakeInstallationPath }}/${{ env.mingwTargetZip }}"
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
