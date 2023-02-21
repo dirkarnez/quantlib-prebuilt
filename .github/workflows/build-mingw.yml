@@ -8,12 +8,12 @@ on:
 jobs:
   build:
     name: Create Release
-    runs-on: windows-2019
+    runs-on: windows-latest
     env:
       libraryName: quantlib
       cmakeInstallationPath: quantlib-installation
-      tagName: QuantLib-v1.27
-      mingwTargetZip: quantlib-${{ github.ref_name }}-x86_64-posix-seh-rev0-8.1.0.zip
+      tagName: QuantLib-v1.29
+      mingwTargetZip: quantlib-${{ github.ref_name }}-mingw64-x86_64-posix-seh-rev0-8.1.0.zip
     steps:
       - name: check mingw version
         run: gcc --version
